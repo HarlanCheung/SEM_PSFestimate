@@ -5,7 +5,7 @@ from scipy.ndimage import gaussian_filter
 from scipy.spatial.distance import cosine
 import seaborn as sns
 
-def detect_edges_and_normals(image_path, sigma=2, num_points=100, margin=30):
+def detect_edges_and_normals(image_path, sigma=2, num_points=200, margin=30):
     # 1. 读取图像并转换为灰度图像
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
@@ -95,12 +95,17 @@ def calculate_intensity_similarity(normal_intensities):
     return similarity_matrix
 
 def filter_outliers_by_gray_value(normal_intensities):
-    # 计算每条法线灰度值的初始值
+    # 计算每条法线灰度值的初始值和终止值
     initial_values = [intensities[0] for intensities in normal_intensities]
+    terminal_values = [intensities[-1] for intensities in normal_intensities]
     median_initial = np.median(initial_values)
+    median_terminal = np.median(terminal_values)
     
-    # 设定阈值，剔除初始值大于中位数的分布
-    filtered_indices = [i for i, value in enumerate(initial_values) if value <= median_initial]
+    # 设定阈值，剔除初始值大于中位数或终止值小于中位数的分布
+    filtered_indices = [
+        i for i, (initial, terminal) in enumerate(zip(initial_values, terminal_values))
+        if initial <= median_initial and terminal >= median_terminal
+    ]
     filtered_intensities = [normal_intensities[i] for i in filtered_indices]
     
     print(f"初始剔除后保留的分布数量: {len(filtered_intensities)} / {len(normal_intensities)}")
@@ -153,45 +158,3 @@ def visualize_results(title, selected_points, gradient_direction, image, normal_
     ax4.set_ylabel('Distribution Index')
 
 
-
-if __name__ == "__main__":
-    image_path = '/Users/harlan/Documents/shaolab/code_proj/psf/test.tif'
-    selected_points, gradient_direction, smoothed_image, image = detect_edges_and_normals(image_path)
-
-    # 提取原图像上的法线灰度值分布
-    normal_intensities = extract_normal_intensities(selected_points, gradient_direction, image)
-    averaged_intensities = average_normal_intensities(normal_intensities)
-    similarity_matrix = calculate_intensity_similarity(normal_intensities)
-
-    # 初步剔除灰度值显著异常的分布
-    filtered_intensities, filtered_indices = filter_outliers_by_gray_value(normal_intensities)
-
-    # 更新剔除后的边缘点和梯度方向
-    filtered_selected_points = selected_points[filtered_indices]
-    filtered_gradient_direction = np.array([gradient_direction[y, x] for y, x in filtered_selected_points])
-
-    # 计算剔除后的平均灰度值分布
-    filtered_averaged_intensities = average_normal_intensities(filtered_intensities)
-    filtered_similarity_matrix = calculate_intensity_similarity(filtered_intensities)
-
-    # 创建一个新的 figure，包含剔除前后的对比展示
-    fig, axes = plt.subplots(2, 4, figsize=(24, 12))
-    fig.suptitle('Comparison Before and After Filtering', fontsize=10)
-
-    # 可视化剔除前的结果
-    visualize_results("Before Filtering", selected_points, gradient_direction, image, normal_intensities, averaged_intensities, similarity_matrix, axes[0])
-
-    # 可视化剔除后的结果
-    visualize_results("After Filtering", filtered_selected_points, filtered_gradient_direction, image, filtered_intensities, filtered_averaged_intensities, filtered_similarity_matrix, axes[1])
-
-    # 调整布局以减少空白区域
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.subplots_adjust(left=0.05, right=0.95, top=0.9, bottom=0.05, wspace=0.3, hspace=0.4)
-    
-    # 保存结果
-    plt.savefig('edge_extraction&graysale_distribution.png')
-    
-    # 显示所有图像
-    plt.show()
-
- 
