@@ -187,6 +187,11 @@ if __name__ == "__main__":
     # 调整布局以减少空白区域
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.subplots_adjust(left=0.05, right=0.95, top=0.9, bottom=0.05, wspace=0.3, hspace=0.4)
-
+    
+    # 保存结果
+    plt.savefig('edge_extraction&graysale_distribution.png')
+    
     # 显示所有图像
     plt.show()
+
+ 
