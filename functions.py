@@ -1,11 +1,11 @@
+# Description: 该文件包含了一些用于计算图像梯度、边缘检测和法线估计的函数
+
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
 from scipy.spatial.distance import cosine
-import seaborn as sns
 
-def detect_edges_and_normals(image_path, sigma=2, num_points=200, margin=30):
+def detect_edges_and_normals(image_path, num_points, sigma=2, margin=30):
     # 1. 读取图像并转换为灰度图像
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
@@ -100,7 +100,7 @@ def filter_outliers_by_gray_value(normal_intensities):
     terminal_values = [intensities[-1] for intensities in normal_intensities]
     median_initial = np.median(initial_values)
     median_terminal = np.median(terminal_values)
-    
+
     # 设定阈值，剔除初始值大于中位数或终止值小于中位数的分布
     filtered_indices = [
         i for i, (initial, terminal) in enumerate(zip(initial_values, terminal_values))
@@ -110,51 +110,4 @@ def filter_outliers_by_gray_value(normal_intensities):
     
     print(f"初始剔除后保留的分布数量: {len(filtered_intensities)} / {len(normal_intensities)}")
     return filtered_intensities, filtered_indices
-
-def visualize_results(title, selected_points, gradient_direction, image, normal_intensities, averaged_intensities, similarity_matrix, axes, length=20):
-    # 子图 1：显示边缘点和法线
-    ax1 = axes[0]
-    ax1.imshow(image, cmap='gray')
-    ax1.scatter(selected_points[:, 1], selected_points[:, 0], color='red', s=10, label='Selected Edge Points')
-
-    for idx, point in enumerate(selected_points):
-        y, x = point
-        # 提取正确的梯度方向值
-        theta = gradient_direction[idx] if gradient_direction.ndim == 1 else gradient_direction[y, x]
-        
-        # 计算法线方向的两端点坐标
-        x1 = int(x - length * np.cos(theta))
-        y1 = int(y - length * np.sin(theta))
-        x2 = int(x + length * np.cos(theta))
-        y2 = int(y + length * np.sin(theta))
-
-        # 在图中绘制法线
-        ax1.plot([x1, x2], [y1, y2], color='blue', linewidth=1)
-
-    ax1.set_title(f'{title}: Edge Points and Normals')
-    ax1.legend()
-
-    # 子图 2：显示所有法线的灰度值分布
-    ax2 = axes[1]
-    for i, intensities in enumerate(normal_intensities):
-        ax2.plot(intensities, label=f'Edge Point {i+1}')
-    ax2.set_title(f'{title}: Gray Level Changes Along Normals')
-    ax2.set_xlabel('Distance along normal direction')
-    ax2.set_ylabel('Gray Level')
-
-    # 子图 3：显示平均后的灰度值分布
-    ax3 = axes[2]
-    ax3.plot(averaged_intensities, label='Averaged Gray Level', color='black', linewidth=2)
-    ax3.set_title(f'{title}: Averaged Gray Level Changes')
-    ax3.set_xlabel('Distance along normal direction')
-    ax3.set_ylabel('Gray Level')
-    ax3.legend()
-
-    # 子图 4：显示相似度热图
-    ax4 = axes[3]
-    sns.heatmap(similarity_matrix, annot=False, cmap='viridis', fmt='.2f', ax=ax4)
-    ax4.set_title(f'{title}: Similarity Heatmap')
-    ax4.set_xlabel('Distribution Index')
-    ax4.set_ylabel('Distribution Index')
-
 
