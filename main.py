@@ -5,12 +5,20 @@ from edgeextraction import (detect_edges_and_normals, extract_normal_intensities
 
 if __name__ == "__main__":
     image_path = '/Users/harlan/Documents/shaolab/code_proj/psf/test.tif'
+    #####################################################################################################
+    # 图像边缘检测及灰度值分布提取 #
+    #####################################################################################################
+
     selected_points, gradient_direction, smoothed_image, image = detect_edges_and_normals(image_path)
 
     # 提取原图像上的法线灰度值分布
     normal_intensities = extract_normal_intensities(selected_points, gradient_direction, image)
     averaged_intensities = average_normal_intensities(normal_intensities)
     similarity_matrix = calculate_intensity_similarity(normal_intensities)
+
+    #####################################################################################################
+    # 灰度值分布的异常检测及剔除 #
+    #####################################################################################################
 
     # 初步剔除灰度值显著异常的分布
     filtered_intensities, filtered_indices = filter_outliers_by_gray_value(normal_intensities)
@@ -23,6 +31,10 @@ if __name__ == "__main__":
     filtered_averaged_intensities = average_normal_intensities(filtered_intensities)
     filtered_similarity_matrix = calculate_intensity_similarity(filtered_intensities)
 
+    #####################################################################################################
+    # 可视化对比 #
+    #####################################################################################################
+    
     # 创建一个新的 figure，包含剔除前后的对比展示
     fig, axes = plt.subplots(2, 4, figsize=(24, 12))
     fig.suptitle('Comparison Before and After Filtering', fontsize=10)
