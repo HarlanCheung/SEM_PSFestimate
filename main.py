@@ -1,15 +1,17 @@
-
 import numpy as np
 import matplotlib.pyplot as plt
 from functions import (detect_edges_and_normals, extract_normal_intensities, average_normal_intensities, 
                        calculate_intensity_similarity, filter_outliers_by_gray_value)
-from psf_estimation import estimate_psf_from_average_intensity
+from psf_estimation import estimate_psf_from_average_intensity, fit_gaussian_to_psf, expand_psf_to_2d
 
 if __name__ == "__main__":
     image_path = '/Users/harlan/Documents/shaolab/code_proj/psf/test.tif'
+    headname = 'test_'
     num_points = 200
     selected_points, gradient_direction, smoothed_image, image = detect_edges_and_normals(image_path, num_points)
-
+    '''
+    select points & filter & visualization
+    '''
     # 提取原图像上的法线灰度值分布
     normal_intensities = extract_normal_intensities(selected_points, gradient_direction, image)
     averaged_intensities = average_normal_intensities(normal_intensities)
@@ -118,21 +120,51 @@ if __name__ == "__main__":
     plt.subplots_adjust(left=0.05, right=0.95, top=0.9, bottom=0.05, wspace=0.3, hspace=0.4)
     
     # 保存结果
-    plt.savefig('edge_extraction&graysale_distribution.png')
+    plt.savefig(headname + 'edge_extraction&graysale_distribution.png')
     
     # 显示所有图像
-    plt.show()
+    # plt.show()
 
-    # 使用 knife edge 方法估计 PSF
-    estimated_psf = estimate_psf_from_average_intensity(filtered_averaged_intensities)
+    '''
+    PSF estiamtion & visualization
+    '''
 
-    # 可视化 PSF 近似
+    # 估计 PSF
+    estimated_psf = estimate_psf_from_average_intensity(averaged_intensities, sigma=2)
+
+    # 使用高斯函数拟合 PSF
+    fitted_gaussian, params = fit_gaussian_to_psf(estimated_psf)
+
+    # 可视化原始 PSF 和拟合的高斯曲线
+
+    x_data = np.arange(len(estimated_psf))
     plt.figure(figsize=(10, 5))
-    plt.plot(estimated_psf, label='Estimated PSF (using Knife Edge Method)')
+    plt.plot(x_data, estimated_psf, label='Estimated PSF (using Knife Edge Method)', linestyle='-', marker='o')
+    plt.plot(x_data, fitted_gaussian, label='Fitted Gaussian', color='red', linestyle='--')
     plt.xlabel('Position along normal direction')
     plt.ylabel('Normalized Intensity')
-    plt.title('Estimated Point Spread Function (PSF)')
+    plt.title('Estimated PSF and Fitted Gaussian')
     plt.legend()
     plt.grid()
-    plt.savefig('psf.png')
-    plt.show()
+    plt.savefig(headname + 'psf_fitted_gaussian.png')
+    # plt.show()
+
+    # 将一维高斯拟合后的 PSF 扩展为二维
+    gaussian_2d_normalized = expand_psf_to_2d(fitted_gaussian, size = 100)
+
+    # 可视化二维高斯 PSF 使用三维热图
+
+    size = 100
+    x = np.linspace(-size // 2, size // 2, size)
+    y = np.linspace(-size // 2, size // 2, size)
+    x, y = np.meshgrid(x, y)
+
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.plot_surface(x, y, gaussian_2d_normalized, cmap='jet', edgecolor='none', alpha=0.9)
+    ax.set_title('3D Gaussian PSF')
+    ax.set_xlabel('X Position')
+    ax.set_ylabel('Y Position')
+    ax.set_zlabel('Normalized Intensity')
+    plt.savefig(headname + '3d_gaussian_psf.png')
+    # plt.show()
