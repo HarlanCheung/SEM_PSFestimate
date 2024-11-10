@@ -1,12 +1,20 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
+import cv2
+import tifffile as tiff
 from functions import (detect_edges_and_normals, extract_normal_intensities, average_normal_intensities, 
                        calculate_intensity_similarity, filter_outliers_by_gray_value)
-from psf_estimation import estimate_psf_from_average_intensity, fit_gaussian_to_psf, expand_psf_to_2d
+#from psf_estimation import estimate_psf_from_average_intensity, fit_gaussian_to_psf, expand_psf_to_2d
+from psf_estimation import estimate_psf
+from RLdeconvolution import deconvolve_image
 
 if __name__ == "__main__":
     image_path = '/Users/harlan/Documents/shaolab/code_proj/psf/test.tif'
-    headname = 'test_'
+    originimage = np.array(cv2.imread(image_path, cv2.IMREAD_GRAYSCALE))
+    print(originimage.shape)
+    file_name = os.path.splitext(os.path.basename(image_path))[0]
+    headname = file_name + '_'
     num_points = 200
     selected_points, gradient_direction, smoothed_image, image = detect_edges_and_normals(image_path, num_points)
     '''
@@ -129,42 +137,41 @@ if __name__ == "__main__":
     PSF estiamtion & visualization
     '''
 
-    # 估计 PSF
-    estimated_psf = estimate_psf_from_average_intensity(averaged_intensities, sigma=2)
-
-    # 使用高斯函数拟合 PSF
-    fitted_gaussian, params = fit_gaussian_to_psf(estimated_psf)
+    # 估计PSF
+    lsf, gaussian_lsf, psf = estimate_psf(averaged_intensities)
 
     # 可视化原始 PSF 和拟合的高斯曲线
 
-    x_data = np.arange(len(estimated_psf))
+    x_data = np.arange(len(lsf))
     plt.figure(figsize=(10, 5))
-    plt.plot(x_data, estimated_psf, label='Estimated PSF (using Knife Edge Method)', linestyle='-', marker='o')
-    plt.plot(x_data, fitted_gaussian, label='Fitted Gaussian', color='red', linestyle='--')
+    plt.plot(x_data, lsf, label='Estimated PSF (using Knife Edge Method)', linestyle='-', marker='o')
+    plt.plot(x_data, gaussian_lsf, label='Fitted Gaussian', color='red', linestyle='--')
     plt.xlabel('Position along normal direction')
     plt.ylabel('Normalized Intensity')
     plt.title('Estimated PSF and Fitted Gaussian')
     plt.legend()
     plt.grid()
     plt.savefig(headname + 'psf_fitted_gaussian.png')
-    # plt.show()
 
-    # 将一维高斯拟合后的 PSF 扩展为二维
-    gaussian_2d_normalized = expand_psf_to_2d(fitted_gaussian, size = 100)
+    # 可视化PSF
+    plt.figure(figsize=(10, 8))
+    plt.imshow(psf, cmap='jet')
+    plt.colorbar()
+    plt.title('Estimated 2D PSF')
+    plt.savefig(headname + 'estimated_psf.png')
 
-    # 可视化二维高斯 PSF 使用三维热图
+    # # Perform deconvolution
 
-    size = 100
-    x = np.linspace(-size // 2, size // 2, size)
-    y = np.linspace(-size // 2, size // 2, size)
-    x, y = np.meshgrid(x, y)
+    # deconvolved_image = deconvolve_image(originimage, psf, 2)
 
-    fig = plt.figure(figsize=(10, 8))
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot_surface(x, y, gaussian_2d_normalized, cmap='jet', edgecolor='none', alpha=0.9)
-    ax.set_title('3D Gaussian PSF')
-    ax.set_xlabel('X Position')
-    ax.set_ylabel('Y Position')
-    ax.set_zlabel('Normalized Intensity')
-    plt.savefig(headname + '3d_gaussian_psf.png')
-    # plt.show()
+    # print(deconvolved_image.shape)
+
+    # # Ensure the deconvolved image is in the correct format
+    # deconvolved_image = np.clip(deconvolved_image, 0, 255).astype(np.uint8)
+
+    # # Save and display the deconvolved image
+    # tiff.imwrite(headname + 'deconvolved_image.tif', deconvolved_image)
+    # plt.imshow(deconvolved_image, cmap='gray')
+    # plt.title('Deconvolved Image')
+    # plt.axis('off')
+    # #plt.show()
