@@ -10,7 +10,7 @@ from psf_estimation import estimate_psf
 from RLdeconvolution import deconvolve_image
 
 if __name__ == "__main__":
-    image_path = '/Users/harlan/Documents/shaolab/code_proj/psf/test.tif'
+    image_path = '/Users/harlan/Documents/shaolab/data/psf/psf8.tif'
     originimage = np.array(cv2.imread(image_path, cv2.IMREAD_GRAYSCALE))
     print(originimage.shape)
     file_name = os.path.splitext(os.path.basename(image_path))[0]
@@ -160,18 +160,18 @@ if __name__ == "__main__":
     plt.title('Estimated 2D PSF')
     plt.savefig(headname + 'estimated_psf.png')
 
-    # # Perform deconvolution
+    # Perform deconvolution
 
-    # deconvolved_image = deconvolve_image(originimage, psf, 2)
+    deconvolved_image = deconvolve_image(originimage, psf, 2)
 
-    # print(deconvolved_image.shape)
+    print(deconvolved_image.shape)
 
-    # # Ensure the deconvolved image is in the correct format
-    # deconvolved_image = np.clip(deconvolved_image, 0, 255).astype(np.uint8)
+    # Ensure the deconvolved image is in the correct format
+    deconvolved_image = np.clip(deconvolved_image, 0, 255).astype(np.uint8)
 
-    # # Save and display the deconvolved image
-    # tiff.imwrite(headname + 'deconvolved_image.tif', deconvolved_image)
-    # plt.imshow(deconvolved_image, cmap='gray')
-    # plt.title('Deconvolved Image')
-    # plt.axis('off')
-    # #plt.show()
+    # Save and display the deconvolved image
+    tiff.imwrite(headname + 'deconvolved_image.tif', deconvolved_image)
+    plt.imshow(deconvolved_image, cmap='gray')
+    plt.title('Deconvolved Image')
+    plt.axis('off')
+    #plt.show()

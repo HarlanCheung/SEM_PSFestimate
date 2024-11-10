@@ -5,7 +5,7 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 from scipy.spatial.distance import cosine
 
-def detect_edges_and_normals(image_path, num_points, sigma=2, margin=30):
+def detect_edges_and_normals(image_path, num_points, sigma=1, margin=30):
     # 1. 读取图像并转换为灰度图像
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
@@ -77,21 +77,35 @@ def average_normal_intensities(normal_intensities):
     return averaged_intensities
 
 def calculate_intensity_similarity(normal_intensities):
-    num_distributions = len(normal_intensities)
-    similarity_matrix = np.zeros((num_distributions, num_distributions))
-
-    for i in range(num_distributions):
-        for j in range(num_distributions):
-            if i == j:
-                similarity_matrix[i, j] = 1.0  # 自己与自己的相似度为 1
-            else:
-                # 检查向量范数是否为零，避免除以零
-                if np.linalg.norm(normal_intensities[i]) == 0 or np.linalg.norm(normal_intensities[j]) == 0:
-                    similarity_matrix[i, j] = 0.0  # 设为 0 或者设为一个合理的默认值
-                else:
-                    similarity = 1 - cosine(normal_intensities[i], normal_intensities[j])
-                    similarity_matrix[i, j] = similarity
-
+    """
+    计算法线灰度值分布之间的相似度
+    """
+    from scipy.spatial.distance import cosine
+    import numpy as np
+    
+    n_samples = len(normal_intensities)
+    similarity_matrix = np.zeros((n_samples, n_samples))
+    
+    for i in range(n_samples):
+        for j in range(n_samples):
+            # 添加数值稳定性检查
+            v1 = normal_intensities[i]
+            v2 = normal_intensities[j]
+            
+            # 检查向量是否全为0
+            if np.all(v1 == 0) or np.all(v2 == 0):
+                similarity_matrix[i,j] = 0
+                continue
+                
+            # 添加极小值防止除零
+            eps = np.finfo(float).eps
+            norm1 = np.linalg.norm(v1) + eps
+            norm2 = np.linalg.norm(v2) + eps
+            
+            # 使用 clip 限制计算结果范围
+            cos_sim = np.clip(np.dot(v1, v2) / (norm1 * norm2), -1.0, 1.0)
+            similarity_matrix[i,j] = 1 - cos_sim
+            
     return similarity_matrix
 
 def filter_outliers_by_gray_value(normal_intensities):
