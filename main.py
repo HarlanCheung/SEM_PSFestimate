@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 import cv2
 import tifffile as tiff
 from functions import (detect_edges_and_normals, extract_normal_intensities, average_normal_intensities, 
-                       calculate_intensity_similarity, filter_outliers_by_gray_value)
+                       calculate_emd_similarity_matrix, filter_outliers_by_gray_value)
 #from psf_estimation import estimate_psf_from_average_intensity, fit_gaussian_to_psf, expand_psf_to_2d
 from psf_estimation import estimate_psf
 from RLdeconvolution import deconvolve_image
 
 if __name__ == "__main__":
-    image_path = '/Users/harlan/Documents/shaolab/data/psf/psf8.tif'
+    image_path = '/Users/harlan/Documents/shaolab/code_proj/psf/test.tif'
     originimage = np.array(cv2.imread(image_path, cv2.IMREAD_GRAYSCALE))
     print(originimage.shape)
     file_name = os.path.splitext(os.path.basename(image_path))[0]
@@ -23,7 +23,7 @@ if __name__ == "__main__":
     # 提取原图像上的法线灰度值分布
     normal_intensities = extract_normal_intensities(selected_points, gradient_direction, image)
     averaged_intensities = average_normal_intensities(normal_intensities)
-    similarity_matrix = calculate_intensity_similarity(normal_intensities)
+    similarity_matrix = calculate_emd_similarity_matrix(normal_intensities)
 
     # 初步剔除灰度值显著异常的分布
     filtered_intensities, filtered_indices = filter_outliers_by_gray_value(normal_intensities)
@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
     # 计算剔除后的平均灰度值分布
     filtered_averaged_intensities = average_normal_intensities(filtered_intensities)
-    filtered_similarity_matrix = calculate_intensity_similarity(filtered_intensities)
+    filtered_similarity_matrix = calculate_emd_similarity_matrix(filtered_intensities)
 
     # 创建一个新的 figure，包含剔除前后的对比展示
     fig, axes = plt.subplots(2, 4, figsize=(24, 12))

@@ -3,7 +3,8 @@
 import cv2
 import numpy as np
 from scipy.ndimage import gaussian_filter
-from scipy.spatial.distance import cosine
+#from scipy.spatial.distance import cosine
+from pyemd import emd
 
 def detect_edges_and_normals(image_path, num_points, sigma=1, margin=30):
     # 1. 读取图像并转换为灰度图像
@@ -76,35 +77,51 @@ def average_normal_intensities(normal_intensities):
 
     return averaged_intensities
 
-def calculate_intensity_similarity(normal_intensities):
+def calculate_emd_similarity_matrix(normal_intensities, bins=256, value_range=(0, 255)):
     """
-    计算法线灰度值分布之间的相似度
+    计算样本间的 Earth Mover's Distance (EMD) 相似度矩阵
+    
+    Parameters:
+        normal_intensities: 灰度分布数组
+        bins: 直方图箱数
+        value_range: 灰度值范围
+        
+    Returns:
+        similarity_matrix: EMD 距离矩阵
     """
-    from scipy.spatial.distance import cosine
-    import numpy as np
+    # 确保输入数据类型为 float64
+    histograms = []
+    for intensities in normal_intensities:
+        hist, _ = np.histogram(intensities.astype(np.float64), 
+                             bins=bins, 
+                             range=value_range, 
+                             density=True)
+        # 确保直方图数据为 float64
+        histograms.append(hist.astype(np.float64))
     
-    n_samples = len(normal_intensities)
-    similarity_matrix = np.zeros((n_samples, n_samples))
-    
+    histograms = np.array(histograms, dtype=np.float64)
+    n_samples = len(histograms)
+    similarity_matrix = np.zeros((n_samples, n_samples), dtype=np.float64)
+
+    # 创建 float64 类型的距离矩阵
+    distance_matrix = np.abs(
+        np.arange(bins, dtype=np.float64).reshape(-1, 1) - 
+        np.arange(bins, dtype=np.float64)
+    )
+
+    # 计算 EMD 距离
     for i in range(n_samples):
-        for j in range(n_samples):
-            # 添加数值稳定性检查
-            v1 = normal_intensities[i]
-            v2 = normal_intensities[j]
+        for j in range(i, n_samples):  # 优化：只计算上三角矩阵
+            hist1 = histograms[i]
+            hist2 = histograms[j]
             
-            # 检查向量是否全为0
-            if np.all(v1 == 0) or np.all(v2 == 0):
-                similarity_matrix[i,j] = 0
-                continue
-                
-            # 添加极小值防止除零
-            eps = np.finfo(float).eps
-            norm1 = np.linalg.norm(v1) + eps
-            norm2 = np.linalg.norm(v2) + eps
+            # 确保直方图和为1
+            hist1 = hist1 / np.sum(hist1)
+            hist2 = hist2 / np.sum(hist2)
             
-            # 使用 clip 限制计算结果范围
-            cos_sim = np.clip(np.dot(v1, v2) / (norm1 * norm2), -1.0, 1.0)
-            similarity_matrix[i,j] = 1 - cos_sim
+            distance = emd(hist1, hist2, distance_matrix)
+            similarity_matrix[i, j] = distance
+            similarity_matrix[j, i] = distance  # 对称矩阵
             
     return similarity_matrix
 
